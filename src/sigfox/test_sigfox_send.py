@@ -26,6 +26,6 @@ s.setblocking(True)
 s.setsockopt(socket.SOL_SIGFOX, socket.SO_RX, False)
 
 # send some bytes
-status = s.send(bytes([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]))
+#status = s.send(bytes([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]))
 
-print(status)
+#print(status)

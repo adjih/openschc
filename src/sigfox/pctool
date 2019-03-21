@@ -1,0 +1,141 @@
+#! /usr/bin/env python3
+#---------------------------------------------------------------------------
+# Cedric Adjih - Inria - 2019
+#---------------------------------------------------------------------------
+
+from ampy import pyboard # pip3 install adafruit-ampy
+import argparse
+import os
+import platform
+
+#---------------------------------------------------------------------------
+# Device identification
+# These are hacks for now
+
+MACOS_DEV_NAME_LIST = [
+    "/dev/tty.usbmodemPy3434341",
+    "/dev/tty.usbmodem23"
+]
+
+def auto_find_devices():
+    sys_name = platform.system()
+    if sys_name == "Darwin":
+        result = []
+        for name in MACOS_DEV_NAME_LIST:
+            if os.path.exists(name):
+                result.append(name)
+        return result
+    else:
+        raise RuntimeError("Unsupported platform", sys_name)
+
+def get_device_tty(args):
+    if args.tty != None:
+        return args.tty
+    name_list = auto_find_devices()
+    if len(name_list) == 0:
+        raise RuntimeError("Cannot find Pycom devices")
+    return name_list[0]
+    
+#---------------------------------------------------------------------------
+
+SCRIPT_SIGFOX_INFO = """
+from network import Sigfox
+import socket
+import ubinascii
+sigfox = Sigfox(mode=Sigfox.SIGFOX, rcz=Sigfox.RCZ1) # RCZ1 == Europe
+sf_mac = ubinascii.hexlify(sigfox.mac()).decode('utf-8')
+sf_id = ubinascii.hexlify(sigfox.id()).decode('utf-8')
+sf_pac = ubinascii.hexlify(sigfox.pac()).decode('utf-8')
+"""
+
+def get_sigfox_info(tty_name):
+    board = pyboard.Pyboard(tty_name)
+    board.enter_raw_repl()
+    board.exec_(SCRIPT_SIGFOX_INFO)
+    sf_mac = board.eval("sf_mac")
+    sf_id  = board.eval("sf_id")
+    sf_pac = board.eval("sf_pac")
+    board.exit_raw_repl()
+    return { "mac": sf_mac, "id": sf_id, "pac": sf_pac }
+
+def cmd_sigfox_info(args):
+    tty_name = get_device_tty(args)
+    print("pycom device on '{}'".format(tty_name))
+    print(get_sigfox_info(tty_name))
+
+#---------------------------------------------------------------------------
+
+SCRIPT_SIGFOX_SEND = """
+from network import Sigfox
+import socket
+import ubinascii
+sigfox = Sigfox(mode=Sigfox.SIGFOX, rcz=Sigfox.RCZ1) # RCZ1 == Europe
+sd = socket.socket(socket.AF_SIGFOX, socket.SOCK_RAW)
+sd.setblocking(True)
+sd.setsockopt(socket.SOL_SIGFOX, socket.SO_RX, False) # XXX: receive?
+send_result = sd.send(bytes({BYTE_LIST_STR}))
+"""
+
+def sigfox_send(tty_name, data_as_bytes):
+    board = pyboard.Pyboard(tty_name)
+    board.enter_raw_repl()
+    data_as_str = "[" + ",".join(str(x) for x in data_as_bytes) + "]"
+    script = SCRIPT_SIGFOX_SEND.format(BYTE_LIST_STR=data_as_str)
+    board.exec_(script)
+    result = int(board.eval("send_result"))
+    board.exit_raw_repl()
+    return result
+
+def cmd_sigfox_send(args):
+    tty_name = get_device_tty(args)
+    print("pycom device on '{}'".format(tty_name))
+    result = sigfox_send(tty_name, bytes(args.content, "utf-8"))
+    print("result: {}".format(result))
+
+#---------------------------------------------------------------------------
+
+SCRIPT_LORA_INFO = """
+from network import LoRa
+"""
+
+def cmd_lora_info(args):
+    tty_name = get_device_tty(args)
+    raise RuntimeError("Not implemented yet", args)
+
+#---------------------------------------------------------------------------
+
+def cmd_show(args):
+    print(auto_find_devices())
+
+#---------------------------------------------------------------------------
+
+def add_common_args(parser_cmd):
+    parser_cmd.add_argument("--tty", action="store", default=None)
+
+parser = argparse.ArgumentParser(prog="sftool")
+subparsers = parser.add_subparsers(dest="cmd")
+
+parser_show = subparsers.add_parser("show")
+
+parser_sigfox = subparsers.add_parser("sigfox-info")
+
+parser_sigfox_send = subparsers.add_parser("sigfox-send")
+parser_sigfox_send.add_argument("content")
+
+parser_lora = subparsers.add_parser("lora-info")
+
+
+for parser_cmd in parser_show, parser_sigfox, parser_lora, parser_sigfox_send:
+    add_common_args(parser_cmd) #XXX: better way?
+
+args = parser.parse_args()
+if args.cmd is None or args.cmd == "show":
+    cmd_show(args)
+elif args.cmd == "sigfox-info":
+    cmd_sigfox_info(args)
+elif args.cmd == "sigfox-send":
+    cmd_sigfox_send(args)    
+elif args.comd == "lora-info":
+    cmd_lora_info(args)
+
+#---------------------------------------------------------------------------
