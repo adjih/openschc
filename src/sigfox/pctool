@@ -3,10 +3,15 @@
 # Cedric Adjih - Inria - 2019
 #---------------------------------------------------------------------------
 
-from ampy import pyboard # pip3 install adafruit-ampy
+
 import argparse
 import os
 import platform
+import io
+from http.server import HTTPServer, BaseHTTPRequestHandler
+import ssl
+
+from ampy import pyboard # pip3 install adafruit-ampy
 
 #---------------------------------------------------------------------------
 # Device identification
@@ -17,6 +22,12 @@ MACOS_DEV_NAME_LIST = [
     "/dev/tty.usbmodem23"
 ]
 
+LINUX_DEV_NAME_LIST = [
+    "/dev/ttyACM0",
+    "/dev/ttyACM1",
+    "/dev/ttyACM2"
+]
+
 def auto_find_devices():
     sys_name = platform.system()
     if sys_name == "Darwin":
@@ -25,6 +36,12 @@ def auto_find_devices():
             if os.path.exists(name):
                 result.append(name)
         return result
+    elif sys_name == "Linux":
+        result = []
+        for name in LINUX_DEV_NAME_LIST:
+            if os.path.exists(name):
+                result.append(name)
+        return result        
     else:
         raise RuntimeError("Unsupported platform", sys_name)
 
@@ -66,22 +83,37 @@ def cmd_sigfox_info(args):
 #---------------------------------------------------------------------------
 
 SCRIPT_SIGFOX_SEND = """
+import time
 from network import Sigfox
 import socket
-import ubinascii
+#import ubinascii
 sigfox = Sigfox(mode=Sigfox.SIGFOX, rcz=Sigfox.RCZ1) # RCZ1 == Europe
+time.sleep(1)
 sd = socket.socket(socket.AF_SIGFOX, socket.SOCK_RAW)
+time.sleep(1)
 sd.setblocking(True)
+time.sleep(1)
 sd.setsockopt(socket.SOL_SIGFOX, socket.SO_RX, False) # XXX: receive?
+time.sleep(1)
 send_result = sd.send(bytes({BYTE_LIST_STR}))
+#time.sleep(1)
+##sd.close()
 """
+
+def pycom_exec(board, command, timeout=10, consumer=None):
+    res, status = board.exec_raw(command, timeout, data_consumer=consumer)
+    if status:
+        raise pyboard.PyboardError("exception", res, status)
+    return res
 
 def sigfox_send(tty_name, data_as_bytes):
     board = pyboard.Pyboard(tty_name)
     board.enter_raw_repl()
     data_as_str = "[" + ",".join(str(x) for x in data_as_bytes) + "]"
     script = SCRIPT_SIGFOX_SEND.format(BYTE_LIST_STR=data_as_str)
-    board.exec_(script)
+    #board.exec_(script)
+    print(script)
+    pycom_exec(board, script, timeout=60)
     result = int(board.eval("send_result"))
     board.exit_raw_repl()
     return result
@@ -91,6 +123,25 @@ def cmd_sigfox_send(args):
     print("pycom device on '{}'".format(tty_name))
     result = sigfox_send(tty_name, bytes(args.content, "utf-8"))
     print("result: {}".format(result))
+
+
+#---------------------------------------------------------------------------
+
+class SigfoxCallback(BaseHTTPRequestHandler):
+    def do_POST(self):
+        length = int(self.headers['Content-Length'])
+        content = self.rfile.read(length)
+        print("callback:", content)
+        self.send_response(200)
+        self.end_headers()
+        response = io.BytesIO()
+        response.write(b"nada")
+        self.wfile.write(response.getvalue())     
+        
+def cmd_sigfox_serve(args):
+    httpd = HTTPServer(('', args.port), SigfoxCallback)
+    print("Starting httpd callback server on port {}".format(args.port))
+    httpd.serve_forever()
 
 #---------------------------------------------------------------------------
 
@@ -122,6 +173,9 @@ parser_sigfox = subparsers.add_parser("sigfox-info")
 parser_sigfox_send = subparsers.add_parser("sigfox-send")
 parser_sigfox_send.add_argument("content")
 
+parser_sigfox_serve = subparsers.add_parser("sigfox-callback")
+parser_sigfox_serve.add_argument("--port", type=int, action="store", default=80)
+
 parser_lora = subparsers.add_parser("lora-info")
 
 
@@ -134,7 +188,9 @@ if args.cmd is None or args.cmd == "show":
 elif args.cmd == "sigfox-info":
     cmd_sigfox_info(args)
 elif args.cmd == "sigfox-send":
-    cmd_sigfox_send(args)    
+    cmd_sigfox_send(args)
+elif args.cmd == "sigfox-callback":
+    cmd_sigfox_serve(args)
 elif args.comd == "lora-info":
     cmd_lora_info(args)
 
