@@ -10,6 +10,7 @@ import platform
 import io
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import ssl
+import json
 
 from ampy import pyboard # pip3 install adafruit-ampy
 
@@ -19,7 +20,8 @@ from ampy import pyboard # pip3 install adafruit-ampy
 
 MACOS_DEV_NAME_LIST = [
     "/dev/tty.usbmodemPy3434341",
-    "/dev/tty.usbmodem23"
+    "/dev/tty.usbmodem23",
+    "/tmp/ttyS0" # XXX:security issue
 ]
 
 LINUX_DEV_NAME_LIST = [
@@ -69,11 +71,11 @@ def get_sigfox_info(tty_name):
     board = pyboard.Pyboard(tty_name)
     board.enter_raw_repl()
     board.exec_(SCRIPT_SIGFOX_INFO)
-    sf_mac = board.eval("sf_mac")
-    sf_id  = board.eval("sf_id")
-    sf_pac = board.eval("sf_pac")
+    sf_mac = board.eval("sf_mac").decode("ascii")
+    sf_id  = board.eval("sf_id").decode("ascii")
+    sf_pac = board.eval("sf_pac").decode("ascii")
     board.exit_raw_repl()
-    return { "mac": sf_mac, "id": sf_id, "pac": sf_pac }
+    return { "sigfox-mac": sf_mac, "sigfox-id": sf_id, "sigfox-pac": sf_pac }
 
 def cmd_sigfox_info(args):
     tty_name = get_device_tty(args)
@@ -147,12 +149,67 @@ def cmd_sigfox_serve(args):
 
 SCRIPT_LORA_INFO = """
 from network import LoRa
+import socket
+import ubinascii
+lora = LoRa()
+lora_mac = ubinascii.hexlify(lora.mac()).decode('utf-8')
 """
+
+def get_lora_info(tty_name):    
+    board = pyboard.Pyboard(tty_name)
+    board.enter_raw_repl()
+    board.exec_(SCRIPT_LORA_INFO)
+    lora_mac = board.eval("lora_mac").decode("ascii")
+    board.exit_raw_repl()
+    return { "lora-mac": lora_mac}
 
 def cmd_lora_info(args):
     tty_name = get_device_tty(args)
-    raise RuntimeError("Not implemented yet", args)
+    print("pycom device on '{}'".format(tty_name))
+    print(get_lora_info(tty_name))
 
+
+SCRIPT_LORA_SEND = """
+from network import LoRa
+import time
+import ubinascii
+import socket
+
+lora = LoRa(mode=LoRa.LORAWAN)
+
+app_eui = ubinascii.unhexlify("XXX")
+app_key = ubinascii.unhexlify("XXXXXX")
+start_time = time.time()
+lora.join(activation=LoRa.OTAA, auth=(app_eui, app_key), timeout=0)
+
+while time.time()-start_time < 30 and not lora.has_joined():
+    time.sleep(0.1)
+send_result = lora.has_joined()
+#sd = socket.socket(socket.AF_LORA, socket.SOCK_RAW)
+#sd.setsockopt(socket.SOL_LORA, socket.SO_DR, 5)
+##sd.setblocking(True)
+#send_result = sd.send(bytes({BYTE_LIST_STR}))
+"""
+
+
+def lora_send(tty_name, data_as_bytes):
+    board = pyboard.Pyboard(tty_name)
+    board.enter_raw_repl()
+    data_as_str = "[" + ",".join(str(x) for x in data_as_bytes) + "]"
+    script = SCRIPT_LORA_SEND.format(BYTE_LIST_STR=data_as_str)
+    #board.exec_(script)
+    print(script)
+    pycom_exec(board, script, timeout=60)
+    result = int(board.eval("send_result"))
+    board.exit_raw_repl()
+    return result
+
+def cmd_lora_send(args):
+    tty_name = get_device_tty(args)
+    print("pycom device on '{}'".format(tty_name))
+    result = lora_send(tty_name, bytes(args.content, "utf-8"))
+    print("result: {}".format(result))
+    
 #---------------------------------------------------------------------------
 
 def cmd_show(args):
@@ -178,8 +235,12 @@ parser_sigfox_serve.add_argument("--port", type=int, action="store", default=80)
 
 parser_lora = subparsers.add_parser("lora-info")
 
+parser_lora_send = subparsers.add_parser("lora-send")
+parser_lora_send.add_argument("content")
 
-for parser_cmd in parser_show, parser_sigfox, parser_lora, parser_sigfox_send:
+
+for parser_cmd in (parser_show, parser_sigfox, parser_lora, parser_sigfox_send,
+                   parser_lora_send):
     add_common_args(parser_cmd) #XXX: better way?
 
 args = parser.parse_args()
@@ -191,7 +252,11 @@ elif args.cmd == "sigfox-send":
     cmd_sigfox_send(args)
 elif args.cmd == "sigfox-callback":
     cmd_sigfox_serve(args)
-elif args.comd == "lora-info":
+elif args.cmd == "lora-info":
     cmd_lora_info(args)
+elif args.cmd == "lora-send":
+    cmd_lora_send(args)
+else:
+    raise RuntimeError("unmanaged command", args.cmd)
 
 #---------------------------------------------------------------------------
