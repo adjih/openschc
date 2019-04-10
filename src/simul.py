@@ -1,3 +1,7 @@
+"""
+.. module:: simul
+   :platform: Python, Micropython
+"""
 #---------------------------------------------------------------------------
 
 from base_import import *
@@ -22,7 +26,7 @@ class SimulLayer3:
 
     def send_later(self, rel_time, dst_L3addr, raw_packet):
         self._log("send-later Devaddr={} Packet={}".format(
-                dst_L3addr, raw_packet.hex()))
+                dst_L3addr, b2hex(raw_packet)))
         self.sim.scheduler.add_event(
             rel_time, self.protocol.schc_send,
             (dst_L3addr, raw_packet,))
@@ -31,7 +35,7 @@ class SimulLayer3:
     def recv_packet(self, dev_L2addr, raw_packet):
         """ receive a packet from L2 and process it. """
         self._log("recv-from-L2 Devaddr={} Packet={}".format(
-                dev_L2addr, raw_packet.get_content().hex()))
+                dev_L2addr, b2hex(raw_packet.get_content())))
         # XXX do more work
 
     def _set_protocol(self, protocol): # called by SCHCProtocol

@@ -1,6 +1,4 @@
 """
-This module is used to manage rules.
-
 ## Base format
 
 A context and rule is written in JSON.
@@ -196,12 +194,14 @@ Example 2:
 
 """
 
-try:
-    import struct
-except ImportError:
-    import ustruct as struct
-
+from base_import import *
 from copy import deepcopy
+
+"""
+.. module:: rulemanager
+   :platform: Python, Micropython
+   :synopsis: This module is used to manage rules.
+"""
 
 # XXX to be checked whether they are needed.
 DEFAULT_FRAGMENT_RID = 1
@@ -221,9 +221,9 @@ class DictToAttrDeep:
     def __update(self, **entries):
         for k,v in entries.items():
             if isinstance(v, dict):
-                self.__dict__[k] = DictToAttrDeep(**v)
+                setattr(self, k, DictToAttrDeep(**v))
             else:
-                self.__dict__.update(entries)
+                setattr(self, k, v)
 
     def __contains__(self, t):
         """ t in this """
@@ -404,6 +404,8 @@ class RuleManager:
             raise ValueError ("{} Invalid rule".format(self._nameRule(rule)))
 
         canon_rule_set = []
+        if "rule_set" not in rule["compression"]:
+            raise ValueError ("compression must have a rule_set.")
         for r in rule["compression"]["rule_set"]:
             canon_r = {}
             for k,v in r.items():
@@ -466,4 +468,5 @@ class RuleManager:
                     raise ValueError ("Ack on error behavior must be specified (afterAll1 or afterAll0)")
                 if not "tileSize" in profile:
                     profile["tileSize"] = 64
+
 
