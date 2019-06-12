@@ -13,24 +13,11 @@ from rulemanager import RuleManager
 l2_mtu = 56
 data_size = 14
 
-rule_context = {
-    "devL2Addr": "*",
-    "dstIID": "*"
-}
-
-compress_rule = {
-    "ruleLength": 3,
-    "ruleID": 5,
-    "compression": {
-        "rule_set": []
-    }
-}
-
 frag_rule1 = {
-    "ruleLength": 6,
-    "ruleID": 1,
+    "RuleLength": 6,
+    "RuleID": 1,
     "profile": { "L2WordSize": 8 },
-    "fragmentation": {
+    "Fragmentation": {
         "FRMode": "ackOnError",
         "FRModeProfile": {
             "dtagSize": 2,
@@ -45,10 +32,10 @@ frag_rule1 = {
 }
 
 frag_rule2 = {
-    "ruleLength": 6,
-    "ruleID": 2,
+    "RuleLength": 6,
+    "RuleID": 2,
     "profile": { "L2WordSize": 8 },
-    "fragmentation": {
+    "Fragmentation": {
         "FRMode": "ackOnError",
         "FRModeProfile": {
             "dtagSize": 2,
@@ -75,10 +62,12 @@ def make_node(sim, rule_manager, devaddr=None, extra_config={}):
 #---------------------------------------------------------------------------
 
 rm0 = RuleManager()
-rm0.add_context(rule_context, compress_rule, frag_rule1, frag_rule2)
+#rm0.add_context(rule_context, compress_rule, frag_rule1, frag_rule2)
+rm0.Add(dev_info=[frag_rule1, frag_rule2])
 
 rm1 = RuleManager()
-rm1.add_context(rule_context, compress_rule, frag_rule1, frag_rule2)
+#rm1.add_context(rule_context, compress_rule, frag_rule1, frag_rule2)
+rm1.Add(dev_info=[frag_rule1, frag_rule2])
 
 #--------------------------------------------------
 

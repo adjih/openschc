@@ -9,6 +9,7 @@ from schcrecv import ReassemblerNoAck
 from schcsend import FragmentAckOnError
 from schcsend import FragmentNoAck
 from schccomp import Compressor, Decompressor
+import rulemanager
 
 class Session:
     """ fragmentation/reassembly session manager
@@ -66,7 +67,7 @@ class SCHCProtocol:
 
     def schc_send(self, dst_L3addr, raw_packet):
         self._log("recv-from-L3 -> {} {}".format(dst_L3addr, raw_packet))
-        context = self.rule_manager.find_context_bydstiid(dst_L3addr)
+        context = self.rule_manager.find_context_from_device_id(dst_L3addr)
         if context is None:
             # reject it.
             self._log("Rejected. Not for SCHC packet, L3addr={}".format(
@@ -74,10 +75,13 @@ class SCHCProtocol:
             return
         # Compression process
         packet_bbuf = BitBuffer(raw_packet)
-        rule = context["comp"]
-        self._log("compression rule_id={}".format(rule.ruleID))
-        # XXX needs to handl the direction
-        packet_bbuf = self.compressor.compress(context, packet_bbuf)
+        print("XXX:WARNING: no longer attempting compression")
+        #XXX:put the following back with proper updates
+        #rule = context["comp"]
+        #self._log("compression rule_id={}".format(rule.ruleID))
+        ## XXX needs to handl the direction
+        #packet_bbuf = self.compressor.compress(context, packet_bbuf)
+        
         # check if fragmentation is needed.
         if packet_bbuf.count_added_bits() < self.layer2.get_mtu_size():
             self._log("SCHC fragmentation is not needed. size={}".format(
@@ -86,16 +90,20 @@ class SCHCProtocol:
             self.scheduler.add_event(0, self.layer2.send_packet, args)
             return
         # fragmentation is required.
-        if context.get("fragSender") is None:
-            self._log("Rejected the packet due to no fragmenation rule.")
-            return
-        # Do fragmenation
-        rule = context["fragSender"]
-        self._log("fragmentation rule_id={}".format(rule.ruleID))
+        print("XXX:WARNING: no longer search fragmentation rules correctly")
+        #XXX:put back the proper search
+        #if context.get("fragSender") is None:
+        #    self._log("Rejected the packet due to no fragmenation rule.")
+        #    return
+        ## Do fragmenation
+        #rule = context["fragSender"]
+
+        rule = rulemanager.DictToAttrDeep(**context["SoR"][0]) # XXX:take the first one
+        self._log("fragmentation rule_id={}".format(rule.RuleID))
         session = self.new_fragment_session(context, rule)
         session.set_packet(packet_bbuf)
-        self.fragment_session.add(rule.ruleID, rule.ruleLength,
-                                    session.dtag, session)
+        self.fragment_session.add(rule.RuleID, rule.RuleLength,
+                                  session.dtag, session)
         session.start_sending()
 
     def new_fragment_session(self, context, rule):

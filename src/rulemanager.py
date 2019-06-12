@@ -839,7 +839,7 @@ class RuleManager:
                 return c
         return None
 
-    def find_context_bydstiid(self, dst_iid):
+    def old_find_context_bydstiid(self, dst_iid): #XXX:remove
         """ find a context with dst_iid, which can be a wild card. """
         # XXX needs to implement wildcard search or something like that.
         for c in self._db:
@@ -848,6 +848,19 @@ class RuleManager:
             if c["dstIID"] == "*":
                 return c
         return None
+
+    def find_context_from_device_id(self, device_id):
+        """ find a context with dst_iid, which can be a wild card. """
+        assert device_id != "*" # XXX:remove - wildcard is None
+        default_context = None
+        for c in self._ctxt:
+            if c["DeviceID"] == device_id:
+                return c
+            if c["DeviceID"] is None:
+                assert default_context is None
+                default_context = c
+        return default_context
+    
 
     def find_context_exact(self, dev_L2addr, dst_iid):
         """ find a context by both devL2Addr and dstIID.

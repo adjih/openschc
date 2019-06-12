@@ -12,13 +12,15 @@ def get_win_all_1(rule):
     return (1<<rule["WSize"])-1
 
 def get_max_fcn(rule):
+    print("XXX:WARNING: check WSize with respect to windowSize")
+    return rule["Fragmentation"]["WSize"]-1 # XXX: I don't think this is correct
     return rule["windowSize"]-1
 
 def get_max_dtag(rule):
     return (1<<rule["dtagSize"])-1
 
 def get_sender_header_size(rule):
-    return rule["ruleLength"] + rule["dtagSize"] + rule.get("WSize", 0) + rule["FCNSize"]
+    return rule["RuleLength"] + rule["dtagSize"] + rule.get("WSize", 0) + rule["FCNSize"]
 
 def get_receiver_header_size(rule):
     return rule["ruleLength"] + rule["dtagSize"] + rule.get("WSize", 0) + 1
