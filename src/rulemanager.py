@@ -397,7 +397,7 @@ class RuleManager:
         if type(dev_info) is dict: #Context or Rules
             if "RuleID" in dev_info: # Rules
                 sor = [dev_info]
-            elif "SoR" in dev_info:
+            elif "SoR" in dev_info:                
                 if "DeviceID" in dev_info:
                     device = dev_info["DeviceID"]
                 sor    = dev_info["SoR"]
@@ -739,14 +739,14 @@ class RuleManager:
         """
         for d in self._ctxt:
             print (d["DeviceID"])
-            if d["DeviceID"] == device: #look for a specific device
+            if d["DeviceID"] == device or d["DeviceID"] is None: #look for a specific device  or rule for all devices
                 for r in d["SoR"]:
                     ruleID = r["RuleID"]
                     ruleLength = r["RuleLength"]
 
                     tested_rule = schc.get_bits(ruleLength, position=0)
 
-                    print (tested_rule, ruleID)
+                    print ("tested-rule", tested_rule, ruleID)
                     if tested_rule == ruleID:
                         return r 
         

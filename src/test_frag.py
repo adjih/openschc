@@ -16,7 +16,7 @@ data_size = 14
 frag_rule1 = {
     "RuleLength": 6,
     "RuleID": 1,
-    "profile": { "L2WordSize": 8 },
+    #XXX:put back cleanly: "profile": { "L2WordSize": 8 },
     "Fragmentation": {
         "FRMode": "ackOnError",
         "FRModeProfile": {
@@ -34,7 +34,7 @@ frag_rule1 = {
 frag_rule2 = {
     "RuleLength": 6,
     "RuleID": 2,
-    "profile": { "L2WordSize": 8 },
+    #XXX:pub back cleanly: "profile": { "L2WordSize": 8 },
     "Fragmentation": {
         "FRMode": "ackOnError",
         "FRModeProfile": {

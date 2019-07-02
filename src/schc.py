@@ -98,7 +98,7 @@ class SCHCProtocol:
         ## Do fragmenation
         #rule = context["fragSender"]
 
-        rule = rulemanager.DictToAttrDeep(**context["SoR"][0]) # XXX:take the first one
+        rule = rulemanager.DictToAttrDeep(**context["SoR"][0]) # XXX:taking the first one
         self._log("fragmentation rule_id={}".format(rule.RuleID))
         session = self.new_fragment_session(context, rule)
         session.set_packet(packet_bbuf)
@@ -139,14 +139,21 @@ class SCHCProtocol:
         # the receiver never knows if the packet from the device having the L2
         # addrss is encoded in SCHC.  Therefore, it has to search the db with
         # the field value of the packet.
-        context = self.rule_manager.find_context_bydevL2addr(dev_L2addr)
+        packet_bbuf = BitBuffer(raw_packet)
+        context = self.rule_manager.FindRuleFromSCHCpacket(
+            packet_bbuf, device=dev_L2addr)
+        print(self.rule_manager._ctxt)
+        print("context", context)
+        XXX
+
+        #context = self.rule_manager.find_context_bydevL2addr(dev_L2addr)
         if context is None:
             # reject it.
             self._log("Rejected. Not for SCHC packet, sender L2addr={}".format(
                     dev_L2addr))
             return
         # find a rule in the context for this packet.
-        packet_bbuf = BitBuffer(raw_packet)
+
         key, rule = self.rule_manager.find_rule_bypacket(context, packet_bbuf)
         if key == "fragSender":
             if rule["dtagSize"] > 0:
