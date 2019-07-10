@@ -250,11 +250,12 @@ class BitBuffer:
     def __add__(self, other):
         """ copy self._content into another BitBuffer and add other into it.
         Assumed that the remaining bits of other is less than 256 bytes.
+        REMOVED THE ASSERT -> was causing problems for files larger than 250 bytes
         """
         new_buf = self.copy()
         other_copy = other.copy()
         remaining_bits = other_copy.count_remaining_bits()
-        assert remaining_bits < 255*8 
+        #assert remaining_bits < 255*8 
         new_buf.add_bits(other_copy.get_bits(remaining_bits),
                          remaining_bits)
         return new_buf

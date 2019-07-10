@@ -3,6 +3,7 @@
    :platform: Python, Micropython
 """
 #---------------------------------------------------------------------------
+#from stats.statsct import Statsct
 
 class SimulLayer2:
     """
@@ -31,6 +32,7 @@ class SimulLayer2:
 
     def _set_protocol(self, protocol):
         self.protocol = protocol
+        #Statsct.addInfo('protocol', protocol.__dict__)
 
     def set_receive_callback(self, receive_function):
         self.receive_function = receive_function
@@ -49,6 +51,7 @@ class SimulLayer2:
         (packet, src_dev_id, dst_dev_id, transmit_callback
         ) = self.packet_queue.pop(0)
         print(transmit_callback, "AAAAAAA")
+        print("send packet from queue -> {}, {}, {}, {}".format(packet, src_dev_id, dst_dev_id, transmit_callback))
 
         self.sim.send_packet(packet, src_dev_id, dst_dev_id,
                              self._event_sent_callback, (transmit_callback,))

@@ -9,7 +9,16 @@ from simsched import SimulScheduler as Scheduler
 from simlayer2 import SimulLayer2
 from cond_true import ConditionalTrue
 
+try:
+    import utime as time
+except ImportError:
+    import time
+    
 import schc
+
+from stats.statsct import Statsct
+
+enable_statsct = True
 
 Link = namedtuple("Link", "from_id to_id delay")
 
@@ -22,7 +31,7 @@ class SimulLayer3:
     def __init__(self, sim):
         self.sim = sim
         self.protocol = None
-        self.L3addr = SimulLayer3.__get_unique_addr()
+        self.L3addr = SimulLayer3.__get_unique_addr()        
 
     def send_later(self, rel_time, dst_L3addr, raw_packet):
         self._log("send-later Devaddr={} Packet={}".format(
@@ -67,6 +76,7 @@ class SimulSCHCNode(SimulNode):
         self.sim._add_node(self)
 
     def event_receive(self, sender_id, packet):
+        self._log("----------------------- RECEIVED PACKET -----------------------")
         self._log("recv from {}".format(sender_id))
         self.layer2.event_receive_packet(sender_id, packet)
 
@@ -120,15 +130,24 @@ class Simul:
 
     def send_packet(self, packet, src_id, dst_id=None,
                     callback=None, callback_args=tuple() ):
+        self._log("----------------------- SEND PACKET -----------------------")
         if not self.frame_loss.check():
+            self._log("----------------------- OK -----------------------")
             self._log("send-packet {}->{} {}".format(src_id, dst_id, packet))
+            if enable_statsct:
+                Statsct.log("send-packet {}->{} {}".format(src_id, dst_id, packet))
+                Statsct.add_packet_info(packet,src_id,dst_id, True)
             # if dst_id == None, it is a broadcast
             link_list = self.get_link_by_id(src_id, dst_id)
             count = 0
             for link in link_list:
                 count += self.send_packet_on_link(link, packet)
         else:
+            self._log("----------------------- KO -----------------------")
             self._log("packet was lost {}->{}".format(src_id, dst_id))
+            if enable_statsct:
+                Statsct.log("packet was lost {}->{} {}".format(src_id, dst_id, packet))            
+                Statsct.add_packet_info(packet,src_id,dst_id, False)
             count = 0
         #
         if callback != None:

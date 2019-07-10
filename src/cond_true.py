@@ -8,12 +8,21 @@ from base_import import *
 
 def cond_random(rate):
     if sys.implementation.name == "micropython":
-        if urandom.getrandbits(8)/256 * 100 < rate:
+        #print("micropython")
+        random_num = urandom.getrandbits(8)/256
+        print("1000*random_num -> {} < 10 *rate  -> {}".format(random_num*1000,10*rate))
+        #if random.randint(0,1000) <= (1000 * FER)
+        #if random.randint(0,1000) <= FER_RANDOM * 10
+        if random_num * 1000 < rate * 10:
+        #if urandom.getrandbits(8)/256 * 100 < rate:
             return True
         else:
             return False
     else:
-        return random.random() * 100 < rate
+        random_num = random.random()
+        print("random_num -> {}, rate -> {}".format(random_num,rate))
+        return random_num < rate
+        #return random.random() * 100 < rate
 
 class ConditionalTrue:
     """ It returns True in a condition of 3 modes.
@@ -48,7 +57,8 @@ class ConditionalTrue:
             if cycle == 0:
                 self.cycle = 1
             else:
-                self.cycle = 1 / cycle
+                self.cycle = cycle
+                #self.cycle = 1 / cycle
             self.check_func = self.__cond_check_rate
         else:
             raise ValueError("mode must be list, cycle, or rante.")
@@ -82,5 +92,5 @@ if __name__ == "__main__":
     test({ "cond": { "mode": "cycle", "cycle": 3 } })
     test({ "cond": { "mode": "list", "count_num": [ 2,3 ] } })
     test({ "cond": { "mode": "list", "count_num": [ 2,3 ], "cycle": 5 } })
-
+    test({ "cond": { "mode": "rate", "cycle": 10 } })
 #---------------------------------------------------------------------------
