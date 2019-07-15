@@ -88,7 +88,7 @@ class ReassembleBase:
         if self.state == "DONE":
             return
 
-        # sending sender abort.
+        # sending receiver abort.
         schc_frag = schcmsg.frag_receiver_tx_abort(self.rule, self.dtag)
         args = (schc_frag.packet.get_content(), self.context["devL2Addr"])
         print("Sent Receiver-Abort.", schc_frag.__dict__)
@@ -132,7 +132,7 @@ class ReassemblerNoAck(ReassembleBase):
         self.cancel_inactive_timer()
         #
         if schc_frag.abort == True:
-            print("----------------------- Sender-Abort ---------------------------")
+            print("----------------------- Received Sender-Abort ---------------------------")
             # XXX needs to release all resources.
             return
         self.tile_list.append(schc_frag.payload)
@@ -190,13 +190,13 @@ class ReassemblerAckOnError(ReassembleBase):
         #
         #input("")
         if schc_frag.abort == True:
-            print("----------------------- Sender-Abort ---------------------------")
+            print("----------------------- Received Sender-Abort ---------------------------")
             #Statsct.set_msg_type("SCHC_SENDER_ABORT")
             # XXX needs to release all resources.
             return
 
         if schc_frag.ack_request == True:
-            print("Received ACK-REQ")
+            print("----------------------- Received ACK-REQ ---------------------------")
             # if self.state != "DONE":
             #     #this can happen when the ALL-1 is not received, so the state is
             #     #not done and the sender is requesting an ACK.
@@ -285,6 +285,9 @@ class ReassemblerAckOnError(ReassembleBase):
                 print("----------------------- ERROR -----------------------")
                 print("ERROR: MIC mismatched. packet {} != result {}".format(
                         schc_frag.mic, mic_calced))
+                import warnings
+                warnings.warn("[CA] XXX check here why git flipped this:")
+                #bit_list = find_missing_tiles_mic_ko_yes_all_1(self.tile_list,
                 bit_list = find_missing_tiles(self.tile_list,
                                               self.rule["FCNSize"],
                                               schcmsg.get_fcn_all_1(self.rule))
@@ -323,6 +326,7 @@ class ReassemblerAckOnError(ReassembleBase):
                     self.protocol.scheduler.add_event(
                             0, self.protocol.layer2.send_packet, args)
                     # XXX need to keep the ack message for the ack request.
+                    break
         # set inactive timer.
         self.event_id_inactive_timer = self.protocol.scheduler.add_event(
                 self.inactive_timer, self.event_inactive, tuple())
@@ -386,7 +390,8 @@ class ReassemblerAckOnError(ReassembleBase):
                         Statsct.set_msg_type("SCHC_ACK_KO")
                     print("----------------------- SCHC ACK KO SEND  -----------------------")
  
-                    print("ACK failure sent:", schc_ack.__dict__)
+                    print("----ACK failure sent:", schc_ack.__dict__)
+                    break
             else:
                 #special case when the ALL-1 message is lost: 2 cases:
                 #1) the all-1 carries a tile (bit in bitmap)
@@ -429,8 +434,8 @@ class ReassemblerAckOnError(ReassembleBase):
                         Statsct.set_msg_type("SCHC_ACK_KO")
                     print("----------------------- SCHC ACK KO SEND  -----------------------")
  
-                    print("ACK failure sent:", schc_ack.__dict__)
- 
+                    print("----ACK failure sent:", schc_ack.__dict__)
+                    break 
  
  
  
@@ -506,7 +511,7 @@ class ReassemblerAckOnError(ReassembleBase):
             # add into the packet as it is.
             schc_packet += self.tile_list[0]["raw_tiles"]
         # get the target of MIC from the BitBuffer.
-        print("---MIC calculation:")
+        print("----MIC calculation:")
         mic_calced = self.get_mic(schc_packet.get_content())
         return schc_packet, mic_calced
 
@@ -515,7 +520,7 @@ class ReassemblerAckOnError(ReassembleBase):
         self.state = "ABORT"
         schc_frag = schcmsg.frag_receiver_tx_abort(self.rule, self.dtag)
         args = (schc_frag.packet.get_content(), self.context["devL2Addr"])
-        print("Sent Receiver-Abort.", schc_frag.__dict__)
+        print("----Sent Receiver-Abort.", schc_frag.__dict__)
         print("----------------------- SCHC RECEIVER ABORT SEND  -----------------------")
 
         if enable_statsct:

@@ -30,6 +30,7 @@ class SimulLayer2:
         self.packet_queue = []
         self.mtu = 56
 
+
     def _set_protocol(self, protocol):
         self.protocol = protocol
         #Statsct.addInfo('protocol', protocol.__dict__)
@@ -55,7 +56,7 @@ class SimulLayer2:
 
         self.sim.send_packet(packet, src_dev_id, dst_dev_id,
                              self._event_sent_callback, (transmit_callback,))
-
+        
     def _event_sent_callback(self, transmit_callback, status):
         assert self.is_transmitting
         self.is_transmitting = False

@@ -17,7 +17,7 @@ class TileList():
     def __init__(self, rule, packet_bbuf):
         self.rule = rule
         self.t_size = rule["tileSize"]
-        self.max_fcn = schcmsg.get_max_fcn(rule)
+        self.max_fcn = schcmsg.get_max_fcn(rule) 
         self.all_tiles = []
         w_num = 0
         t_num = self.max_fcn
