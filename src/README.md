@@ -1,4 +1,4 @@
-Simulator Rulemanager
+Rulemanager Test
 =====================
 
 ## Example with the simulator
