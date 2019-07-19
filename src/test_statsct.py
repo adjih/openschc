@@ -15,8 +15,6 @@ try:
     from ucollections import OrderedDict
 except ImportError:
     from collections import OrderedDict
-
-from stats.cdf_calc import cdf_cal
 #---------------------------------------------------------------------------
 
 
@@ -42,10 +40,10 @@ frag_rule1 = {
         "FRMode": "ackOnError",
         "FRModeProfile": {
             "dtagSize": 2,
-            "WSize": 3, # 3 # Number of tiles per window
+            "WSize": 7, # 3 # Number of tiles per window
             "FCNSize": 3, # 3 # 2^3-2 .. 0 number of sequence de each tile
             "ackBehavior": "afterAll1",
-            "tileSize": 392, # 392 # size of each tile -> 8 bits
+            "tileSize": 800, # 392 # size of each tile -> 8 bits
             "MICAlgorithm": "crc32",
             "MICWordSize": 8
         }
@@ -60,10 +58,10 @@ frag_rule2 = {
         "FRMode": "ackOnError",
         "FRModeProfile": {
             "dtagSize": 2,
-            "WSize": 3, # 3 # Number of tiles per window
+            "WSize": 7, # 3 # Number of tiles per window
             "FCNSize": 3, # 3 # 2^3-2 .. 0 number of sequence de each tile
             "ackBehavior": "afterAll1",
-            "tileSize": 392, # 392 # size of each tile -> 8 bits
+            "tileSize": 800, # 392 # size of each tile -> 8 bits
             "MICAlgorithm": "crc32",
             "MICWordSize": 8
         }
@@ -120,12 +118,8 @@ def make_node(sim, rule_manager, devaddr=None, extra_config={}):
 #---------------------------------------------------------------------------
 #lost_rate in %
 #loss_rate = None
-loss_rate = 15
-collision_lambda = 0.1
-background_frag_size = 54
+loss_rate = 10
 loss_config = {"mode":"rate", "cycle":loss_rate}
-#loss_config = {"mode":"collision", "G":collision_lambda, "background_frag_size":background_frag_size}
-
 #loss_config = None
 #L2 MTU size in bits - byte
 # l2_mtu = 56
@@ -133,9 +127,11 @@ loss_config = {"mode":"rate", "cycle":loss_rate}
 #Size of data in bytes
 #data_size = 14
 
-#l2_mtu = 1936 #in bits
-#SF = 8
+l2_mtu = 1936 #in bits
+SF = 8
 l2_mtu = 408 #in bits
+SF = 12
+l2_mtu = 54 #in bits
 SF = 12
 # EU863-870 band, maximum payload size:
 #         DR0 = SF12: 51 bytes - 408 bits
@@ -155,24 +151,21 @@ SF = 12
 #---------------------------------------------------------------------------
 #Configuration of test_statsct
 #Number of repetitions
-repetitions = 10
+repetitions = 1
 sim_results = []
 total_results = OrderedDict()
-total_delay_packet = []
-total_delay_packet_size = OrderedDict()
-test_file = False
+test_file = True
 fileToSend = "testfile_large.txt"
 #fileToSend = "testfile.txt"
 data_size = 300 #Size of data in bytes
 
 min_packet_size = int(l2_mtu /8) #byes
-min_packet_size = 60 #60
+min_packet_size = 250 #60
 max_packet_size = 1290 #bytes 
 #packet_sizes = [80,160,320,640,1280]
-#packet_sizes = [320,640,1280]
+#packet_sizes = [320]
 #packet_sizes = [80,160,320,640]
-packet_sizes = [255]
-#packet_sizes = [1400]
+packet_sizes = [14]
 
 ack_on_error = True
 #---------------------------------------------------------------------------
@@ -206,7 +199,7 @@ simul_config = {
 if loss_config is not None:
     simul_config["loss"] = loss_config
 
-#for packet_size in range(min_packet_size, max_packet_size,11):
+#for packet_size in range(min_packet_size, max_packet_size,10):
 for packet_size in packet_sizes:
 
     print("packet_size - > {}".format(packet_size))
@@ -239,7 +232,6 @@ for packet_size in packet_sizes:
         print("")
 
         #device rule
-        print("-------------------------------- Device Rule -----------------------------")  
         for rule1 in rm0.__dict__:
             print(rm0.__dict__[rule1])
             for info in rm0.__dict__[rule1]:
@@ -247,7 +239,6 @@ for packet_size in packet_sizes:
                 Statsct.set_device_rule(info)
         #input('')
         #gw rule
-        print("-------------------------------- gw Rule -----------------------------")  
         for rule1 in rm1.__dict__:
             print(rm1.__dict__[rule1])
             for info in rm1.__dict__[rule1]:
@@ -284,44 +275,24 @@ for packet_size in packet_sizes:
         #except Exception as e:
         #    print("Exception: -> {}".format(e))
         #    input('Enter to continue')
-        print('-------------------------------- Interation ended -----------------------|')
-        print("")
-        print("")
-        print("-------------------------------- Statistics -----------------------------") 
-                
+
+        print('simulation ended')
         #Statsct.print_results()
-        print('---- Sender Packet list ')
+        print('Sender Packet list ')
         Statsct.print_packet_list(Statsct.sender_packets)
-        print("")
 
-        print('---- Receiver Packet list ')
+        print('Receiver Packet list ')
         Statsct.print_packet_list(Statsct.receiver_packets)
-        print("")
-        
-        print('---- Packet lost Results (Status -> True = Received, False = Failed) ')
+
+        print("Results")
         Statsct.print_ordered_packets()
-        print("")
-
-        print('---- Performance metrics')
-        params = Statsct.calculate_tx_parameters()
-        sim_results.append(params)        
+        #print(Statsct.get_results())
+        print('performance metrics')
+        sim_results.append(Statsct.calculate_tx_parameters())
         #print("{}".format(sim_results))
-        print("")
 
-        if params['packet_status']:
-            total_delay_packet.append(params['total_delay'])
-            print('--------------------------')
-            input('---Continue to next sim---')
+        input('Continue to next sim')
     #--------------------------------------------------
-    print('-------------------------------- Simulation ended -----------------------|')
-    print("")
-    print("")
-    print("-------------------------------- Final Statistics -----------------------")     
-    total_delay_packet_size[packet_size] = total_delay_packet
-    #print("total_delay_packet_size:{}".format(total_delay_packet_size))
-    #print("total_delay_packet:{}".format(total_delay_packet))
-    #cdf_cal(total_delay_packet)
-    #input('....')
     average_goodput = 0
     average_total_delay = 0
     average_channe_occupancy = 0
@@ -332,19 +303,11 @@ for packet_size in packet_sizes:
     number_failed_fragments = 0
     channel_occupancy_sender = 0
     channel_occupancy_receiver = 0
-    iteration = 0
-
-    print("---- Iterations ----") 
 
     for result in sim_results:
-        iteration += 1
-        print("Interation {} ----> {}".format(iteration,result))
+        print("{}".format(result))
         average_goodput += result['goodput']
-
-        if result['packet_status']:
-            average_total_delay += result['total_delay']
-            total_delay_packet.append(result['total_delay'])
-
+        average_total_delay += result['total_delay']
         average_channe_occupancy += result['channel_occupancy']
         number_success_fragments += result['succ_fragments']
         number_failed_fragments += result['fail_fragments']
@@ -354,16 +317,12 @@ for packet_size in packet_sizes:
             number_success_packets += 1
         else:
             number_failed_packets += 1
-
-    print("")
-
-    print("---- Average value of iterations ---- ") 
     average_goodput = average_goodput / len(sim_results)
     average_channe_occupancy = average_channe_occupancy / len(sim_results)
     average_total_delay = average_total_delay / len(sim_results)
     reliability = number_success_packets / (number_success_packets + number_failed_packets)
     ratio = number_success_fragments / (number_success_fragments + number_failed_fragments)
-    #print("{}".format(len(payload)))
+    print("{}".format(len(payload)))
     print("goodput:{}, total delay: {}, channel Occupancy: {}, reliability: {}, ratio (FER): {}".format(average_goodput,
         average_total_delay, average_channe_occupancy, reliability, ratio*100))
     total_results[packet_size] = {'goodput':average_goodput, 'total_delay': average_total_delay,
@@ -372,12 +331,9 @@ for packet_size in packet_sizes:
                                  'channel_occupancy_sender':channel_occupancy_sender,
                                  'channel_occupancy_receiver':channel_occupancy_receiver}
     sim_results = []
-    total_delay_packet_size
     #input("")
 #print("{}".format(total_results))
-
-print("")
-print("---- Final results ---- ") 
+print("goodput")
 print("\\addplot coordinates {")
 for packet_size in total_results:
     #print("{}:".format(packet_size))
